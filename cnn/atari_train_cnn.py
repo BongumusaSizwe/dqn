@@ -13,6 +13,7 @@ import os
 import json
 from argparse import ArgumentParser
 import argparse
+import sys
 
 def parse_args():
     parser = argparse.ArgumentParser("CNN experiments for Atari games")
@@ -84,12 +85,7 @@ class GameData(Dataset):
 	def __getitem__(self, index):
 		return self.states[index], self.actions[index]
     
-
-if __name__ == '__main__':
-	
-	args = parse_args()
-
-
+'''def main(args):
 	batch_size = args.batch_size
 	num_workers = args.num_workers
 	num_channels = args.num_channels
@@ -185,6 +181,7 @@ if __name__ == '__main__':
 		"env": args.env,
 		"optmizer": args.optimizer,
 		"lr": args.lr,
+		"batch-size":args.batch_size,
 		"num-steps": args.num_steps,
 		"num-epochs": args.num_epochs,
 		"num-workers": args.num_workers,
@@ -194,3 +191,11 @@ if __name__ == '__main__':
 		}
 	with open(PATH+'.json', 'w') as fp:
 		json.dump(details, fp)
+'''
+if __name__ == '__main__':
+	parser = parse_args()	
+	args = parser.args()
+	
+	print(args)
+	#main(args)
+

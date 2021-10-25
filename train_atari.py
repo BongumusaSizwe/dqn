@@ -2,11 +2,27 @@ import argparse
 import random
 
 import torch
-
+import os
 from dqn.agent import DQNAgent
 from dqn.replay_buffer import ReplayBuffer
 from dqn.wrappers import *
+import time
+import sys
 
+class Logger(object):
+    def __init__(self):
+        self.terminal = sys.stdout
+        self.log = open("Models/logfile" + str(time.time()) + ".log", "a")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)  
+
+    def flush(self):
+        #this flush method is needed for python 3 compatibility.
+        #this handles the flush command by doing nothing.
+        #you might want to specify some extra behavior here.
+        pass
 
 def parse_args():
     parser = argparse.ArgumentParser("DQN experiments for Atari games")
@@ -36,9 +52,32 @@ def parse_args():
     return parser.parse_args()
 
 
-if __name__ == '__main__':
-    args = parse_args()
+def path_name(env_name):
+	directory = 'Models/'
+	env_name = env.unwrapped.spec.id.lower()
+	path = os.path.join(directory, env_name)
+	dir_exist = os.path.isdir(path)
+	dataset_name = env_name
 
+	if not dir_exist:
+		os.mkdir(path)
+
+	count = 1
+	for dirname, dirnames, filenames in os.walk(path):
+		for filename in filenames:
+		    print(os.path.join(dirname, filename))
+		    count += 1
+	#Create and save dataset
+	loc = dataset_name.find('-')
+	filepath = dataset_name[:loc]+str(count)
+	
+	return directory + env_name +'/' +  filepath
+
+
+if __name__ == '__main__':
+    sys.stdout = Logger()
+    args = parse_args()
+    print(args.batch_size)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     np.random.seed(args.seed)
@@ -55,7 +94,7 @@ if __name__ == '__main__':
     env = PyTorchFrame(env)
     env = ClipRewardEnv(env)
     env = FrameStack(env, 4)
-
+    env = gym.wrappers.Monitor(env, "recording", force=True)
     replay_buffer = ReplayBuffer(args.replay_buffer_size)
 
     agent = DQNAgent(
@@ -71,6 +110,7 @@ if __name__ == '__main__':
     eps_timesteps = args.eps_fraction * float(args.num_steps)
     episode_rewards = [0.0]
     loss = [0.0]
+    
 
     state = env.reset()
     for t in range(args.num_steps):
@@ -92,7 +132,7 @@ if __name__ == '__main__':
             episode_rewards.append(0.0)
 
         if t > args.learning_starts and t % args.learning_freq == 0:
-            agent.optimise_td_loss()
+           loss = agent.optimise_td_loss()
 
         if t > args.learning_starts and t % args.target_update_freq == 0:
             agent.update_target_network()
@@ -105,4 +145,9 @@ if __name__ == '__main__':
             print("episodes: {}".format(num_episodes))
             print("mean 100 episode reward: {}".format(mean_100ep_reward))
             print("% time spent exploring: {}".format(int(100 * eps_threshold)))
+            print("Loss: {}".format(loss))
             print("********************************************************")
+
+
+    PATH = path_name(env)
+    torch.save(agent.policy_network.state_dict(), PATH + '.pth')
